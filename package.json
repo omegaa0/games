@@ -1,0 +1,28 @@
+{
+  "name": "emlak-krali-turkiye",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "prebuild": "find . -maxdepth 2 -not -path '*/.*'",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.js",
+    "server": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "socket.io-client": "^4.7.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "framer-motion": "^10.16.4",
+    "lucide-react": "^0.284.0",
+    "canvas-confetti": "^1.6.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react-swc": "^3.5.0",
+    "vite": "^5.0.0"
+  }
+}
