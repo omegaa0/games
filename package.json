@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "find . -maxdepth 2 -not -path '*/.*'",
     "build": "vite build",
     "preview": "vite preview",
     "start": "node server.js",
