@@ -58,8 +58,28 @@ export const BOARD_TILES = [
     { id: 49, name: "ŞANS", type: "chance" },
     { id: 50, name: "SAKARYA", type: "property", price: 3800000, rent: 190000, housePrice: 1000000, group: "darkblue", color: "#00008b" },
     { id: 51, name: "KOCAELİ", type: "property", price: 3800000, rent: 190000, housePrice: 1000000, group: "darkblue", color: "#00008b" },
-    { id: 52, name: "LÜKS VERGİSİ", type: "tax", price: 0 }, /* Dynamic */
-    { id: 53, name: "ANKARA", type: "property", price: 4500000, rent: 400000, housePrice: 1250000, group: "darkblue", color: "#00008b" },
-    { id: 54, name: "İSTANBUL", type: "property", price: 5000000, rent: 500000, housePrice: 1500000, group: "darkblue", color: "#00008b" },
-    { id: 55, name: "ARDAHAN", type: "property", price: 8000000, rent: 800000, housePrice: 2000000, group: "darkblue", color: "#00008b" }
+    { id: 52, name: "LÜKS VERGİSİ", type: "tax", price: 0 },
+    { id: 53, name: "TEKİRDAĞ", type: "property", price: 4000000, rent: 200000, housePrice: 1200000, group: "darkblue", color: "#00008b" },
+    { id: 54, name: "EDİRNE", type: "property", price: 4000000, rent: 200000, housePrice: 1200000, group: "darkblue", color: "#00008b" },
+    { id: 55, name: "ARDAHAN", type: "property", price: 6000000, rent: 500000, housePrice: 2000000, group: "darkblue", color: "#00008b" }
+];
+
+export const CHANCE_CARDS = [
+    { id: 1, text: "Banka sana kâr payı ödedi.", amount: 1500000, type: 'money' },
+    { id: 2, text: "Hız sınırını aştın, ceza öde.", amount: -500000, type: 'money' },
+    { id: 3, text: "Başlangıç noktasına git.", target: 0, type: 'move' },
+    { id: 4, text: "Üç kare geri git.", amount: -3, type: 'step' },
+    { id: 5, text: "Doğrudan Nezarethaneye git.", target: 14, type: 'move' }, // Using jail index
+    { id: 6, text: "Tüm oyunculara 200B öde.", amount: -200000, type: 'payall' },
+    { id: 7, text: "Piyangodan para kazandın!", amount: 2000000, type: 'money' },
+    { id: 8, text: "En yakın istasyona git.", type: 'move_nearest', group: 'station' }
+];
+
+export const COMMUNITY_CHEST = [
+    { id: 1, text: "Doktor parası öde.", amount: -500000, type: 'money' },
+    { id: 2, text: "Bankadan hata ile para geldi.", amount: 1000000, type: 'money' },
+    { id: 3, text: "Doğum günün kutlu olsun! Herkesten 100B Al.", amount: 100000, type: 'collectall' },
+    { id: 4, text: "Hayat sigortası vadesi doldu.", amount: 1000000, type: 'money' },
+    { id: 5, text: "Hastane masrafları.", amount: -1000000, type: 'money' },
+    { id: 6, text: "Vergi iadesi.", amount: 500000, type: 'money' }
 ];

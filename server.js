@@ -26,58 +26,97 @@ const rooms = new Map();
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
-    socket.on('joinRoom', ({ roomId, playerName }) => {
+    // Send initial room list to connecting users
+    socket.emit('roomListUpdate', Array.from(rooms.values()).filter(r => !r.gameStarted).map(r => ({
+        id: r.id, name: r.name, playerCount: r.players.length, maxPlayers: r.maxPlayers, hostName: r.hostName
+    })));
+
+    socket.on('createRoom', ({ roomName, playerName, maxPlayers = 6 }) => {
+        const roomId = 'room-' + Math.random().toString(36).substr(2, 6);
+        const newPlayer = {
+            id: socket.id,
+            name: playerName,
+            money: INITIAL_MONEY,
+            position: 0,
+            color: getPlayerColor(0),
+            properties: [],
+            bankrupt: false
+        };
+
+        const newRoom = {
+            id: roomId,
+            name: roomName || `Oda ${roomId.substr(5)}`,
+            hostId: socket.id,
+            hostName: playerName,
+            players: [newPlayer],
+            board: [],
+            currentTurn: 0,
+            gameStarted: false,
+            maxPlayers: maxPlayers,
+            buildings: {}
+        };
+
+        rooms.set(roomId, newRoom);
         socket.join(roomId);
+        socket.emit('roomCreated', newRoom);
 
-        if (!rooms.has(roomId)) {
-            rooms.set(roomId, {
-                players: [],
-                boardState: {},
-                currentTurn: 0,
-                gameStarted: false
-            });
-        }
+        io.emit('roomListUpdate', Array.from(rooms.values()).filter(r => !r.gameStarted).map(r => ({
+            id: r.id, name: r.name, playerCount: r.players.length, maxPlayers: r.maxPlayers, hostName: r.hostName
+        })));
+    });
 
+    socket.on('joinRoom', ({ roomId, playerName }) => {
         const room = rooms.get(roomId);
 
-        if (room.players.length < 6 && !room.gameStarted) {
+        if (room && !room.gameStarted && room.players.length < room.maxPlayers) {
             const newPlayer = {
                 id: socket.id,
                 name: playerName,
-                position: 0,
                 money: INITIAL_MONEY,
+                position: 0,
+                color: getPlayerColor(room.players.length),
                 properties: [],
-                color: getPlayerColor(room.players.length)
+                bankrupt: false
             };
             room.players.push(newPlayer);
+            socket.join(roomId);
+
             io.to(roomId).emit('roomUpdate', room);
+            io.emit('roomListUpdate', Array.from(rooms.values()).filter(r => !r.gameStarted).map(r => ({
+                id: r.id, name: r.name, playerCount: r.players.length, maxPlayers: r.maxPlayers, hostName: r.hostName
+            })));
         } else {
-            socket.emit('error', 'Room is full or game already started');
+            socket.emit('error', 'Oda dolu veya oyun başlamış.');
         }
     });
 
     socket.on('startGame', (roomId) => {
         const room = rooms.get(roomId);
-        if (room && room.players.length >= 2) {
+        if (room && room.hostId === socket.id && room.players.length >= 2) {
             room.gameStarted = true;
             io.to(roomId).emit('gameStarted', room);
+            io.emit('roomListUpdate', Array.from(rooms.values()).filter(r => !r.gameStarted).map(r => ({
+                id: r.id, name: r.name, playerCount: r.players.length, maxPlayers: r.maxPlayers, hostName: r.hostName
+            })));
         }
     });
 
     socket.on('makeMove', ({ roomId, action }) => {
         const room = rooms.get(roomId);
         if (!room) return;
-
-        // Handle game logic updates here
-        // For simplicity, we'll let the client calculate and send the new state
-        // But in a real app, logic should be on the server.
-        // For this demo, we'll broadcast the action.
         io.to(roomId).emit('gameStateUpdate', action);
     });
 
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
-        // Handle player removal if needed
+        for (const [id, room] of rooms.entries()) {
+            if (!room.gameStarted && room.players.length === 1 && room.players[0].id === socket.id) {
+                rooms.delete(id);
+                io.emit('roomListUpdate', Array.from(rooms.values()).filter(r => !r.gameStarted).map(r => ({
+                    id: r.id, name: r.name, playerCount: r.players.length, maxPlayers: r.maxPlayers, hostName: r.hostName
+                })));
+            }
+        }
     });
 });
 
