@@ -31,6 +31,24 @@ const Dice3D = ({ value, rolling }) => {
     );
 };
 
+const Building3D = ({ level }) => {
+    if (level === 5) return <div className="building-hotel" />;
+    return (
+        <div className="building-container">
+            {Array.from({ length: level }).map((_, i) => (
+                <div key={i} className="building-house" />
+            ))}
+        </div>
+    );
+};
+
+// Spectator around the board
+const Spectator3D = ({ angle, color }) => (
+    <div className="spectator" style={{ transform: `rotate(${angle}deg) translate(800px) rotate(-${angle}deg)` }}>
+        <Character3D color={color} name="Seyirci" />
+    </div>
+);
+
 const Character3D = ({ color, name, isCurrent }) => {
     return (
         <motion.div
@@ -41,29 +59,42 @@ const Character3D = ({ color, name, isCurrent }) => {
         >
             <div className="char-head" />
             <div className="char-body" />
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap border border-white/20 text-white shadow-xl z-50">
-                {name}
-            </div>
+            {name && (
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap border border-white/20 text-white shadow-xl z-50">
+                    {name}
+                </div>
+            )}
         </motion.div>
     );
 };
+
+// Decorative Statue for corners
+const CornerStatue = ({ type }) => (
+    <div className="corner-statue text-4xl opacity-50 filter drop-shadow-lg">
+        {type === 'jail' && '🚔'}
+        {type === 'parking' && '🅿️'}
+        {type === 'gotojail' && '👮'}
+        {type === 'start' && '🚩'}
+    </div>
+);
 
 const App = () => {
     const [gameState, setGameState] = useState('lobby');
     const [room, setRoom] = useState(null);
     const [playerName, setPlayerName] = useState('');
-    const [roomId] = useState('turkiye-mega-large');
+    const [roomId] = useState('turkiye-mega-large-v3');
     const [diceRolling, setDiceRolling] = useState(false);
     const [lastDice, setLastDice] = useState([1, 1]);
-    const [message, setMessage] = useState('Emlak Kralı: Türkiye Dev Harita!');
+    const [message, setMessage] = useState('Oyun Başladı! İyi eğlenceler.');
 
     // Game Flow
     const [canBuy, setCanBuy] = useState(false);
+    const [canBuild, setCanBuild] = useState(false); // New state for building
     const [turnPhase, setTurnPhase] = useState('roll');
     const [rolledDoubles, setRolledDoubles] = useState(false);
 
     // Viewing State
-    const [viewMode, setViewMode] = useState('3d'); // '3d' or 'top'
+    const [viewMode, setViewMode] = useState('3d');
 
     useEffect(() => {
         socket.on('roomUpdate', (updatedRoom) => setRoom(updatedRoom));
@@ -81,13 +112,16 @@ const App = () => {
         };
     }, [room]);
 
+    // Local turn reset
     useEffect(() => {
         if (room && room.players[room.currentTurn].id === socket.id) {
-            if (turnPhase === 'end') { }
+            // Logic to update local turn state if needed
         } else {
             setTurnPhase('roll');
             setCanBuy(false);
+            setCanBuild(false);
             setRolledDoubles(false);
+            setDiceRolling(false);
         }
     }, [room?.currentTurn]);
 
@@ -102,19 +136,20 @@ const App = () => {
 
     const rollDice = () => {
         if (room.players[room.currentTurn].id !== socket.id || diceRolling) return;
-        setDiceRolling(true);
-        const d1 = Math.floor(Math.random() * 6) + 1;
-        const d2 = Math.floor(Math.random() * 6) + 1;
+        socket.emit('makeMove', { roomId, action: { type: 'START_ROLL' } });
 
+        // Local visual trigger is handled by receiving START_ROLL or just doing it
+        // We will do logic locally then emit FINAL move
+
+        setDiceRolling(true);
         setTimeout(() => {
-            setLastDice([d1, d2]);
-            setDiceRolling(false);
-            const isDoubles = d1 === d2;
-            setRolledDoubles(isDoubles);
+            const d1 = Math.floor(Math.random() * 6) + 1;
+            const d2 = Math.floor(Math.random() * 6) + 1;
             const total = d1 + d2;
             const player = room.players[room.currentTurn];
-            const newPos = (player.position + total) % 56; // 56 Tiles now
+            const newPos = (player.position + total) % 56;
 
+            // Emit the RESULT so everyone sees the same dice
             socket.emit('makeMove', {
                 roomId, action: {
                     type: 'MOVE_PLAYER', playerId: player.id, newPosition: newPos, passedStart: newPos < player.position, dice: [d1, d2]
@@ -124,9 +159,23 @@ const App = () => {
     };
 
     const handleAction = (action) => {
+        // Handle Dice Sync
+        if (action.type === 'START_ROLL') {
+            setDiceRolling(true);
+            return;
+        }
+
         setRoom(prevRoom => {
             if (!prevRoom) return prevRoom;
             const newRoom = JSON.parse(JSON.stringify(prevRoom));
+
+            // Sync Dice Result
+            if (action.dice) {
+                setLastDice(action.dice);
+                setDiceRolling(false);
+                setRolledDoubles(action.dice[0] === action.dice[1]);
+            }
+
             const player = newRoom.players.find(p => p.id === action.playerId);
             if (!player) return newRoom;
 
@@ -137,24 +186,49 @@ const App = () => {
                     setMessage(`${player.name} başlangıçtan geçti +2.000.000₺`);
                 }
 
+                // If it's MY turn, I calculate logic, otherwise I just watch
                 if (player.id === socket.id) {
                     const tile = BOARD_TILES[action.newPosition];
                     const owner = prevRoom.players.find(p => p.properties.includes(tile.id));
 
-                    if ((tile.type === 'property' || tile.type === 'station' || tile.type === 'utility') && !owner) {
-                        if (player.money >= tile.price) {
-                            setCanBuy(true);
+                    if ((tile.type === 'property' || tile.type === 'station' || tile.type === 'utility')) {
+                        if (!owner) {
+                            // Can Buy?
+                            setCanBuy(player.money >= tile.price);
+                            setCanBuild(false);
                             setTurnPhase('decision');
-                        } else {
-                            setTurnPhase('decision');
+                        } else if (owner.id === player.id) {
+                            // My own property -> Check if can build
+                            // Logic: Can build if monopolized (simplified here: if I have money)
+                            // Real Monopoly rules require owning color group. Let's do a simple check.
+                            const groupProperties = BOARD_TILES.filter(t => t.group === tile.group);
+                            const ownsAll = groupProperties.every(t => player.properties.includes(t.id));
+
+                            const currentBuildLevel = (newRoom.buildings && newRoom.buildings[tile.id]) || 0;
+
+                            if (ownsAll && currentBuildLevel < 5 && tile.housePrice && player.money >= tile.housePrice) {
+                                setCanBuild(true);
+                                setMessage("Kendi mülkün! Ev dikebilirsin.");
+                            } else {
+                                setCanBuild(false);
+                                setMessage("Kendi mülkün.");
+                            }
                             setCanBuy(false);
+                            setTurnPhase('decision'); // Still give choice to end turn or build
+                        } else {
+                            // Someone else's
+                            setCanBuy(false);
+                            setCanBuild(false);
+                            handleTileEffects(player, tile, newRoom, action.dice);
                         }
                     } else {
                         handleTileEffects(player, tile, newRoom, action.dice);
                     }
                 } else {
+                    // Update message for spectators
                     const tile = BOARD_TILES[action.newPosition];
-                    handleSimpleTileMessage(player, tile, newRoom);
+                    if (tile.type === 'start') setMessage(`${player.name} Başlangıç noktasında.`);
+                    else setMessage(`${player.name} ilerliyor...`);
                 }
             }
 
@@ -163,7 +237,19 @@ const App = () => {
                 player.money -= tile.price;
                 player.properties.push(tile.id);
                 setMessage(`${player.name}, ${tile.name} mülkünü satın aldı!`);
-                if (socket.id === action.playerId) handlePostMove(rolledDoubles);
+                if (socket.id === action.playerId) handlePostMove(false); // Don't end turn if we might want to do more? Nah standard flow.
+            }
+
+            if (action.type === 'BUILD_HOUSE') {
+                // Init buildings object if not exists
+                if (!newRoom.buildings) newRoom.buildings = {};
+                const currentLevel = newRoom.buildings[action.tileId] || 0;
+                if (currentLevel < 5) {
+                    newRoom.buildings[action.tileId] = currentLevel + 1;
+                    player.money -= action.cost;
+                    setMessage(`${player.name}, ${BOARD_TILES.find(t => t.id === action.tileId).name} konumuna bina dikti!`);
+                }
+                if (socket.id === action.playerId) handlePostMove(false);
             }
 
             if (action.type === 'END_TURN') {
@@ -175,36 +261,63 @@ const App = () => {
 
     const handleTileEffects = (player, tile, roomState, dice) => {
         const owner = roomState.players.find(p => p.properties.includes(tile.id));
+        const buildings = roomState.buildings || {};
+        const level = buildings[tile.id] || 0;
+
         if (owner && owner.id !== player.id) {
-            const rent = tile.rent || 200000;
+            let rent = tile.rent || 200000;
+            // Increase rent based on houses
+            if (level > 0) rent = rent * (1 + level); // Simple multiplier
+
             player.money -= rent;
             owner.money += rent;
-            setMessage(`${player.name} -> ${owner.name} kira ödedi: ${rent.toLocaleString()}₺`);
+            setMessage(`${player.name} -> ${owner.name} kira: ${rent.toLocaleString()}₺ (Seviye ${level})`);
         } else if (tile.type === 'tax') {
-            player.money -= tile.price;
-            setMessage(`${player.name} vergi ödedi: ${tile.price.toLocaleString()}₺`);
+            // Asset Tax Logic
+            let taxAmount = 0;
+            if (tile.price === 0) { // Dynamic tag
+                // 10% of total cash + property values
+                const propertyValue = player.properties.reduce((acc, pid) => {
+                    const t = BOARD_TILES.find(x => x.id === pid);
+                    return acc + (t ? t.price : 0);
+                }, 0);
+                const totalAssets = player.money + propertyValue;
+                taxAmount = Math.floor(totalAssets * 0.1);
+                setMessage(`${player.name} Varlık Vergisi: ${taxAmount.toLocaleString()}₺ (%10)`);
+            } else {
+                taxAmount = tile.price;
+                setMessage(`${player.name} Vergi: ${taxAmount.toLocaleString()}₺`);
+            }
+            player.money -= taxAmount;
+
         } else if (tile.type === 'gotojail') {
-            player.position = 14; // Jail index for 56 tile board (14th tile)
+            player.position = 14;
             setMessage(`${player.name} nezarethaneye gönderildi!`);
         }
 
         const isDoubles = dice && dice[0] === dice[1];
-        if (isDoubles) {
-            setTurnPhase('roll');
-            setRolledDoubles(true);
-        } else {
-            setTimeout(() => endTurn(), 2000);
+        if (socket.id === player.id) {
+            if (isDoubles) {
+                setTurnPhase('roll');
+                setRolledDoubles(true);
+            } else {
+                setTimeout(() => endTurn(), 2500);
+            }
         }
     };
 
     const handleSimpleTileMessage = (player, tile, roomState) => {
-        setMessage(`${player.name} ${tile.name} karesine geldi.`);
+        // Optionally update message for others, but handleAction usually sets state messages better
+        // If needed we can set a specific message here
     };
 
     const handlePostMove = (doubles) => {
-        if (doubles) {
+        const dice = lastDice;
+        const isDoubles = dice[0] === dice[1]; // Use current state dice
+        if (isDoubles) {
             setTurnPhase('roll');
             setCanBuy(false);
+            setCanBuild(false);
             setMessage("Çift attın! Tekrar zar at.");
         } else {
             endTurn();
@@ -217,18 +330,38 @@ const App = () => {
         setCanBuy(false);
     };
 
-    const passTurn = () => handlePostMove(rolledDoubles);
+    const buildHouse = () => {
+        const player = room.players[room.currentTurn];
+        const tile = BOARD_TILES[player.position];
+        socket.emit('makeMove', {
+            roomId,
+            action: {
+                type: 'BUILD_HOUSE',
+                playerId: player.id,
+                tileId: tile.id,
+                cost: tile.housePrice
+            }
+        });
+        setCanBuild(false);
+    };
+
+    const passTurn = () => handlePostMove(false);
 
     const endTurn = () => {
         socket.emit('makeMove', { roomId, action: { type: 'END_TURN', playerId: socket.id } });
         setTurnPhase('roll');
         setCanBuy(false);
+        setCanBuild(false);
         setRolledDoubles(false);
     };
 
-    const toggleView = () => {
-        setViewMode(prev => prev === '3d' ? 'top' : '3d');
-    };
+    const toggleView = () => setViewMode(prev => prev === '3d' ? 'top' : '3d');
+
+    // Generate random spectators
+    const spectators = [0, 45, 90, 135, 180, 225, 270, 315].map(deg => ({
+        angle: deg + Math.random() * 20,
+        color: ['#ff0000', '#00ff00', '#0000ff', '#ffff00'][Math.floor(Math.random() * 4)]
+    }));
 
     if (gameState === 'lobby') {
         return (
@@ -280,16 +413,16 @@ const App = () => {
             {/* HUD: Players */}
             <div className="players-3d-list">
                 {room?.players.map((p, i) => (
-                    <div key={p.id} className={`player-3d-card ${room.currentTurn === i ? 'active' : ''} ${room.players[room.currentTurn].id === p.id ? 'turn-pulse' : ''}`}>
-                        <div className="relative w-14 h-14 flex items-center justify-center">
+                    <div key={p.id} className={`player-3d-card ${room.currentTurn === i ? 'active turn-pulse' : ''}`}>
+                        <div className="relative w-10 h-10 flex items-center justify-center">
                             <Character3D color={p.color} name="" />
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-white font-black text-lg flex items-center gap-2">
+                            <span className="text-white font-bold text-md leading-tight">
                                 {p.name}
                             </span>
-                            <div className="money-3d flex items-center gap-1 text-sm text-emerald-400">
-                                <Wallet size={14} /> {(p.money / 1000000).toFixed(1)}M₺
+                            <div className="money-3d flex items-center gap-1 text-sm text-emerald-400 font-mono font-bold">
+                                <Wallet size={12} /> {(p.money / 1000000).toFixed(1)}M
                             </div>
                         </div>
                     </div>
@@ -302,14 +435,25 @@ const App = () => {
             </button>
 
             {/* Game Info */}
-            <div className="absolute top-10 right-10 glass p-6 rounded-3xl max-w-sm border-l-[6px] border-indigo-500 z-[2000]">
-                <p className="text-md font-bold leading-tight text-white mb-2">{message}</p>
+            <div className="absolute top-8 right-8 glass p-4 rounded-2xl max-w-xs border-l-4 border-indigo-500 z-[2000]">
+                <p className="text-sm font-bold text-white text-center">{message}</p>
             </div>
 
             {/* 3D Scene Root */}
             <div className={`board-3d-system ${viewMode === 'top' ? 'top-down-mode' : ''}`}>
+
+                {/* Spectators Ring */}
+                <div className="spectators-ring">
+                    {spectators.map((s, i) => (
+                        <Spectator3D key={i} angle={s.angle} color={s.color} />
+                    ))}
+                    {room?.players.length > 0 && room.players.map((p, i) => (
+                        <Spectator3D key={`p${i}`} angle={i * 45 + 10} color={p.color} />
+                    ))}
+                </div>
+
                 <div className="board expanded-board">
-                    {/* 56 Tiles Logic: 15x15 Grid. 0-14, 14-28, 28-42, 42-56 */}
+                    {/* 56 Tiles Logic */}
                     {BOARD_TILES.map((tile, i) => {
                         let row, col;
                         // 15x15 grid indices are 1-15
@@ -323,6 +467,8 @@ const App = () => {
                         else { row = i - 41; col = 15; } // i=43->row=2. i=55->row=14.
 
                         const owner = room?.players.find(p => p.properties.includes(tile.id));
+                        const buildLevel = room?.buildings ? room.buildings[tile.id] : 0;
+
                         return (
                             <div
                                 key={i}
@@ -330,7 +476,6 @@ const App = () => {
                                 style={{
                                     gridRow: row,
                                     gridColumn: col,
-                                    boxShadow: owner ? `inset 0 0 20px ${owner.color}80` : undefined,
                                     borderColor: owner ? owner.color : undefined
                                 }}
                             >
@@ -342,6 +487,16 @@ const App = () => {
                                         <div className="absolute top-1 right-1 w-3 h-3 rounded-full shadow-lg border border-white" style={{ backgroundColor: owner.color }} />
                                     )}
                                 </div>
+
+                                {/* 3D Buildings */}
+                                {buildLevel > 0 && <Building3D level={buildLevel} />}
+
+                                {/* Corner Models */}
+                                {i === 0 && <CornerStatue type="start" />}
+                                {i === 14 && <CornerStatue type="jail" />}
+                                {i === 28 && <CornerStatue type="parking" />}
+                                {i === 42 && <CornerStatue type="gotojail" />}
+
                                 <div className="absolute inset-0 flex items-center justify-center z-20">
                                     <AnimatePresence>
                                         {room?.players.filter(p => p.position === i).map(p => (
@@ -354,11 +509,15 @@ const App = () => {
                             </div>
                         );
                     })}
-                    <div className="board-center expanded-center">
-                        <div className="center-logo">EMLAK KRALI TR</div>
-                        <div className="flex gap-16 items-center scale-150">
+
+                    {/* Center of Board (Clickable for View Toggle) */}
+                    <div className="board-center expanded-center cursor-pointer group hover:bg-white/5 transition-colors" onClick={toggleView}>
+                        <div className="flex gap-16 items-center scale-150 pointer-events-none">
                             <Dice3D value={lastDice[0]} rolling={diceRolling} />
                             <Dice3D value={lastDice[1]} rolling={diceRolling} />
+                        </div>
+                        <div className="mt-12 text-slate-500 font-bold text-sm tracking-widest opacity-30 group-hover:opacity-60 transition-opacity">
+                            GÖRÜNÜMÜ DEĞİŞTİRMEK İÇİN TIKLA
                         </div>
                     </div>
                 </div>
@@ -367,24 +526,35 @@ const App = () => {
             {/* Controls */}
             <div className="controls-bottom">
                 {room?.players[room?.currentTurn].id === socket.id && turnPhase === 'roll' && (
-                    <button onClick={rollDice} disabled={diceRolling} className="btn-luxury text-2xl px-12 py-6">
-                        {rolledDoubles ? "ÇİFT! TEKRAR" : "ZARI FIRLAT 🎲"}
+                    <button onClick={rollDice} disabled={diceRolling} className="btn-luxury px-8 py-4 text-xl">
+                        {rolledDoubles ? "ÇİFT! TEKRAR AT" : "ZARI AT"}
                     </button>
                 )}
 
                 {room?.players[room?.currentTurn].id === socket.id && turnPhase === 'decision' && (
-                    <div className="flex gap-4">
-                        {canBuy ? (
-                            <button onClick={buyProperty} className="btn-luxury bg-emerald-600 text-xl px-10 py-5 border-b-8 border-emerald-800 hover:border-emerald-700">
+                    <>
+                        {canBuy && !canBuild && (
+                            <button onClick={buyProperty} className="btn-luxury bg-emerald-600 px-6 py-3 border-b-4 border-emerald-800 hover:border-emerald-700">
                                 SATIN AL 💸
                             </button>
-                        ) : (
-                            <div className="bg-red-600/90 px-8 py-5 rounded-2xl text-white font-black border-2 border-red-400">YETERSİZ BAKİYE</div>
                         )}
-                        <button onClick={passTurn} className="btn-luxury bg-slate-800 text-xl px-10 py-5 border-b-8 border-slate-950">
-                            {rolledDoubles ? "TURU BİTİR (TEKRAR AT)" : "PAS GEÇ ⏭️"}
+
+                        {canBuild && (
+                            <button onClick={buildHouse} className="btn-luxury bg-amber-600 px-6 py-3 border-b-4 border-amber-800 hover:border-amber-700">
+                                BİNA DİK 🏠
+                            </button>
+                        )}
+
+                        {!canBuy && !canBuild && (
+                            <div className="insufficient-funds">
+                                <LogOut size={16} /> YETERSİZ BAKİYE / İŞLEM YOK
+                            </div>
+                        )}
+
+                        <button onClick={passTurn} className="btn-luxury bg-slate-800 px-6 py-3 border-b-4 border-slate-950">
+                            {rolledDoubles ? "TURU BİTİR (TEKRAR AT)" : "PAS GEÇ"}
                         </button>
-                    </div>
+                    </>
                 )}
             </div>
         </div>

@@ -56,10 +56,10 @@ export const BOARD_TILES = [
     { id: 47, name: "ESKİŞEHİR", type: "property", price: 3600000, rent: 180000, group: "green", color: "#008000" },
     { id: 48, name: "SİRKECİ GARI", type: "station", price: 2000000, rent: 250000 },
     { id: 49, name: "ŞANS", type: "chance" },
-    { id: 50, name: "SAKARYA", type: "property", price: 3800000, rent: 190000, group: "darkblue", color: "#00008b" },
-    { id: 51, name: "KOCAELİ", type: "property", price: 3800000, rent: 190000, group: "darkblue", color: "#00008b" },
-    { id: 52, name: "LÜKS VERGİSİ", type: "tax", price: 2000000 },
-    { id: 53, name: "ANKARA", type: "property", price: 4500000, rent: 400000, group: "darkblue", color: "#00008b" },
-    { id: 54, name: "İSTANBUL", type: "property", price: 5000000, rent: 500000, group: "darkblue", color: "#00008b" },
-    { id: 55, name: "BEŞİKTAŞ", type: "property", price: 8000000, rent: 800000, group: "darkblue", color: "#00008b" }
+    { id: 50, name: "SAKARYA", type: "property", price: 3800000, rent: 190000, housePrice: 1000000, group: "darkblue", color: "#00008b" },
+    { id: 51, name: "KOCAELİ", type: "property", price: 3800000, rent: 190000, housePrice: 1000000, group: "darkblue", color: "#00008b" },
+    { id: 52, name: "LÜKS VERGİSİ", type: "tax", price: 0 }, /* Dynamic */
+    { id: 53, name: "ANKARA", type: "property", price: 4500000, rent: 400000, housePrice: 1250000, group: "darkblue", color: "#00008b" },
+    { id: 54, name: "İSTANBUL", type: "property", price: 5000000, rent: 500000, housePrice: 1500000, group: "darkblue", color: "#00008b" },
+    { id: 55, name: "ARDAHAN", type: "property", price: 8000000, rent: 800000, housePrice: 2000000, group: "darkblue", color: "#00008b" }
 ];
