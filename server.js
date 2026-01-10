@@ -15,6 +15,7 @@ const io = new Server(server, {
     }
 });
 
+const INITIAL_MONEY = 10000000;
 const PORT = process.env.PORT || 3001;
 
 // Serve static files from the build folder
