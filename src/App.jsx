@@ -627,109 +627,160 @@ const App = () => {
 
             {/* --- TRADE PROPOSAL RECEIVED MODAL --- */}
             {tradeProposal && (
-                <div className="modal-overlay">
-                    <div className="glass p-8 rounded-3xl max-w-2xl w-full text-center border border-indigo-500">
-                        <h3 className="text-3xl text-white font-bold mb-6">🤝 Takas Teklifi</h3>
-                        <p className="text-slate-300 mb-6 text-xl">
-                            <span className="font-bold text-white">{room.players.find(p => p.id === tradeProposal.fromPlayerId)?.name}</span> sana bir teklif yaptı:
+                <div className="absolute inset-0 z-[4000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass p-8 rounded-[40px] max-w-4xl w-full text-center border border-white/10 shadow-2xl bg-[#0f172a]/80">
+                        <div className="flex items-center justify-center gap-4 mb-8">
+                            <h3 className="text-4xl text-white font-black tracking-tight">🤝 YENİ TAKAS TEKLİFİ</h3>
+                            <span className="bg-indigo-600 px-3 py-1 rounded-full text-xs font-bold text-white">BEKLİYOR</span>
+                        </div>
+
+                        <p className="text-slate-300 mb-8 text-xl font-light">
+                            <span className="font-bold text-white text-2xl text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">{room.players.find(p => p.id === tradeProposal.fromPlayerId)?.name}</span> seninle bir anlaşma yapmak istiyor:
                         </p>
 
-                        <div className="grid grid-cols-2 gap-8 mb-8">
-                            <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/30">
-                                <h4 className="text-emerald-400 font-bold mb-2">ALACAKLARIN</h4>
-                                <ul className="text-left text-sm space-y-1">
-                                    {tradeProposal.offer.money > 0 && <li className="font-mono text-white">💰 {tradeProposal.offer.money.toLocaleString()}₺</li>}
-                                    {tradeProposal.offer.properties.map(pid => (
-                                        <li key={pid} className="text-slate-200">🏠 {BOARD_TILES.find(t => t.id === pid).name}</li>
-                                    ))}
-                                </ul>
+                        <div className="flex flex-col md:flex-row gap-8 mb-10">
+                            {/* ALACAKLARIN */}
+                            <div className="flex-1 bg-gradient-to-b from-emerald-900/40 to-emerald-900/10 p-6 rounded-3xl border border-emerald-500/30 relative overflow-hidden group">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
+                                <h4 className="text-emerald-400 font-black text-2xl mb-6 flex items-center justify-center gap-2">
+                                    <span className="text-3xl">📥</span> KAZANCIN
+                                </h4>
+                                <div className="space-y-4 min-h-[150px] flex flex-col justify-center">
+                                    {tradeProposal.offer.money > 0 && (
+                                        <div className="bg-emerald-500/20 p-4 rounded-xl border border-emerald-500/20 flex items-center justify-between">
+                                            <span className="text-emerald-300 font-bold">NAKİT PARA</span>
+                                            <span className="font-mono text-2xl font-black text-white">{tradeProposal.offer.money.toLocaleString()}₺</span>
+                                        </div>
+                                    )}
+                                    {tradeProposal.offer.properties.length > 0 ? (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {tradeProposal.offer.properties.map(pid => {
+                                                const t = BOARD_TILES.find(x => x.id === pid);
+                                                return <div key={pid} className="bg-white/5 p-2 rounded-lg text-white font-bold text-sm border-l-4" style={{ borderLeftColor: t.color }}>{t.name}</div>
+                                            })}
+                                        </div>
+                                    ) : (tradeProposal.offer.money === 0 && <p className="text-slate-500 italic">Mülk veya para teklif edilmedi.</p>)}
+                                </div>
                             </div>
-                            <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/30">
-                                <h4 className="text-red-400 font-bold mb-2">VERECEKLERİN</h4>
-                                <ul className="text-left text-sm space-y-1">
-                                    {tradeProposal.request.money > 0 && <li className="font-mono text-white">💰 {tradeProposal.request.money.toLocaleString()}₺</li>}
-                                    {tradeProposal.request.properties.map(pid => (
-                                        <li key={pid} className="text-slate-200">🏠 {BOARD_TILES.find(t => t.id === pid).name}</li>
-                                    ))}
-                                </ul>
+
+                            {/* VERECEKLERİN */}
+                            <div className="flex-1 bg-gradient-to-b from-red-900/40 to-red-900/10 p-6 rounded-3xl border border-red-500/30 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-red-500"></div>
+                                <h4 className="text-red-400 font-black text-2xl mb-6 flex items-center justify-center gap-2">
+                                    <span className="text-3xl">📤</span> KAYBIN
+                                </h4>
+                                <div className="space-y-4 min-h-[150px] flex flex-col justify-center">
+                                    {tradeProposal.request.money > 0 && (
+                                        <div className="bg-red-500/20 p-4 rounded-xl border border-red-500/20 flex items-center justify-between">
+                                            <span className="text-red-300 font-bold">ÖDEYECEĞİN</span>
+                                            <span className="font-mono text-2xl font-black text-white">{tradeProposal.request.money.toLocaleString()}₺</span>
+                                        </div>
+                                    )}
+                                    {tradeProposal.request.properties.length > 0 ? (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {tradeProposal.request.properties.map(pid => {
+                                                const t = BOARD_TILES.find(x => x.id === pid);
+                                                return <div key={pid} className="bg-white/5 p-2 rounded-lg text-white font-bold text-sm border-l-4" style={{ borderLeftColor: t.color }}>{t.name}</div>
+                                            })}
+                                        </div>
+                                    ) : (tradeProposal.request.money === 0 && <p className="text-slate-500 italic">Hiçbir şey talep edilmedi (Hediyelik).</p>)}
+                                </div>
                             </div>
                         </div>
 
-                        <div className="flex gap-4 justify-center">
-                            <button onClick={() => { socket.emit('respondTrade', { roomId: room.id, accepted: true, tradeData: tradeProposal }); setTradeProposal(null); }} className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-xl font-bold text-xl shadow-lg transition-transform hover:scale-105">
-                                KABUL ET ✅
+                        <div className="flex gap-6 justify-center">
+                            <button onClick={() => { socket.emit('respondTrade', { roomId: room.id, accepted: true, tradeData: tradeProposal }); setTradeProposal(null); }} className="bg-emerald-600 hover:bg-emerald-500 text-white px-12 py-4 rounded-2xl font-black text-xl shadow-lg shadow-emerald-600/20 transition-all hover:scale-105 hover:-translate-y-1 flex items-center gap-3">
+                                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">✓</div> KABUL ET
                             </button>
-                            <button onClick={() => { socket.emit('respondTrade', { roomId: room.id, accepted: false, tradeData: tradeProposal }); setTradeProposal(null); }} className="bg-red-600 hover:bg-red-500 text-white px-8 py-4 rounded-xl font-bold text-xl shadow-lg transition-transform hover:scale-105">
-                                REDDET ❌
+                            <button onClick={() => { socket.emit('respondTrade', { roomId: room.id, accepted: false, tradeData: tradeProposal }); setTradeProposal(null); }} className="bg-rose-600 hover:bg-rose-500 text-white px-12 py-4 rounded-2xl font-black text-xl shadow-lg shadow-rose-600/20 transition-all hover:scale-105 hover:-translate-y-1 flex items-center gap-3">
+                                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">✕</div> REDDET
                             </button>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             )}
 
             {/* --- CREATE TRADE MODAL --- */}
             {showTradeModal && (
-                <div className="modal-overlay">
-                    <div className="glass p-6 rounded-3xl w-full max-w-4xl h-[80vh] flex flex-col relative shadow-2xl border border-indigo-500/50">
-                        <button onClick={() => setShowTradeModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={24} /></button>
-                        <h2 className="text-3xl font-black text-center mb-6 text-white tracking-tight">TAKAS MERKEZİ</h2>
+                <div className="absolute inset-0 z-[4000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass p-6 rounded-[32px] w-full max-w-5xl h-[85vh] flex flex-col relative shadow-2xl border border-indigo-500/30 bg-[#0f172a]/90">
+                        <button onClick={() => setShowTradeModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-white bg-white/5 p-2 rounded-full transition-colors"><X size={24} /></button>
+                        <h2 className="text-4xl font-black text-center mb-8 text-white tracking-tight pt-2">
+                            <span className="text-indigo-400">TAKAS</span> MERKEZİ
+                        </h2>
 
                         {tradeStep === 1 && (
-                            <div className="flex-1 flex flex-col items-center justify-center gap-6">
-                                <h3 className="text-xl text-slate-300">Kiminle takas yapmak istersin?</h3>
-                                <div className="flex gap-4 flex-wrap justify-center">
+                            <div className="flex-1 flex flex-col items-center justify-center gap-10">
+                                <h3 className="text-2xl text-slate-300 font-light">Kiminle anlaşmak istersin?</h3>
+                                <div className="flex gap-6 flex-wrap justify-center">
                                     {availablePlayers?.map(p => (
                                         <button
                                             key={p.id}
                                             onClick={() => { setTradeTarget(p); setTradeStep(2); }}
-                                            className="flex flex-col items-center gap-2 p-6 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition-all hover:scale-105"
+                                            className="flex flex-col items-center gap-4 p-8 bg-gradient-to-b from-white/10 to-white/5 hover:from-indigo-600/30 hover:to-indigo-900/30 rounded-3xl border border-white/10 hover:border-indigo-500 transition-all hover:scale-105 group min-w-[160px]"
                                         >
-                                            <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-bold text-white shadow-lg" style={{ backgroundColor: p.color }}>
+                                            <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-bold text-white shadow-xl group-hover:shadow-indigo-500/50 transition-shadow" style={{ backgroundColor: p.color }}>
                                                 {p.name[0]}
                                             </div>
-                                            <span className="font-bold text-white text-lg">{p.name}</span>
+                                            <span className="font-bold text-white text-xl group-hover:text-indigo-300">{p.name}</span>
                                         </button>
                                     ))}
-                                    {availablePlayers?.length === 0 && <p className="text-slate-500">Takas yapacak başka oyuncu yok.</p>}
+                                    {availablePlayers?.length === 0 && <div className="p-8 bg-white/5 rounded-2xl text-slate-400">Takas yapabileceğiniz başka oyuncu bulunmuyor.</div>}
                                 </div>
                             </div>
                         )}
 
                         {tradeStep === 2 && tradeTarget && (
-                            <div className="trade-modal-container">
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 px-4 pb-4 min-h-0">
                                 {/* YOUR SIDE */}
-                                <div className="trade-column">
-                                    <h4 className="text-emerald-400">SENİN TEKLİFİN</h4>
-                                    <div className="money-slider-Group">
-                                        <label className="text-xs font-bold text-slate-400 mb-1 flex justify-between">
-                                            <span>PARA EKLE</span>
-                                            <span className="text-white">{offerMoney.toLocaleString()}₺</span>
-                                        </label>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max={currentPlayer.money}
-                                            step="50000"
-                                            value={offerMoney}
-                                            onChange={(e) => setOfferMoney(Number(e.target.value))}
-                                            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                                        />
+                                <div className="flex flex-col bg-slate-900/50 rounded-3xl p-6 border border-white/10">
+                                    <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: currentPlayer.color }}>{currentPlayer.name[0]}</div>
+                                        <div>
+                                            <h4 className="text-emerald-400 font-bold text-lg">SENİN TEKLİFİN</h4>
+                                            <p className="text-xs text-slate-400">Karşı tarafa ne vereceksin?</p>
+                                        </div>
                                     </div>
-                                    <h5 className="text-xs font-bold text-slate-400 mt-2">MÜLKLERİN</h5>
-                                    <div className="trade-property-list custom-scrollbar">
-                                        {currentPlayer.properties.length === 0 && <p className="text-center text-xs text-slate-500 py-4">Mülkün yok.</p>}
+
+                                    <div className="mb-6 bg-black/20 p-4 rounded-xl">
+                                        <label className="text-xs font-bold text-slate-400 mb-2 block uppercase tracking-wider">Nakit Para Ekle</label>
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max={currentPlayer.money}
+                                                step="50000"
+                                                value={offerMoney}
+                                                onChange={(e) => setOfferMoney(Math.min(currentPlayer.money, Math.max(0, Number(e.target.value))))}
+                                                className="flex-1 bg-slate-800 border border-slate-600 rounded-lg py-2 px-4 text-white font-mono text-lg focus:outline-none focus:border-emerald-500 text-right"
+                                            />
+                                            <span className="font-bold text-emerald-500 text-xl">₺</span>
+                                        </div>
+                                        <div className="flex justify-between mt-2 text-xs text-slate-500">
+                                            <span>Mevcut: {(currentPlayer.money / 1000000).toFixed(2)}M</span>
+                                            <button onClick={() => setOfferMoney(currentPlayer.money)} className="text-emerald-400 hover:text-emerald-300">Tümü</button>
+                                        </div>
+                                    </div>
+
+                                    <h5 className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">Mülklerini Seç</h5>
+                                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2 relative">
+                                        {currentPlayer.properties.length === 0 && <div className="absolute inset-0 flex items-center justify-center text-slate-500 text-sm italic">Takas edilecek mülkün yok.</div>}
                                         {currentPlayer.properties.map(pid => {
                                             const tile = BOARD_TILES.find(t => t.id === pid);
+                                            const isSelected = offerProps.includes(pid);
                                             return (
                                                 <div
                                                     key={pid}
-                                                    className={`trade-prop-item ${offerProps.includes(pid) ? 'selected' : ''}`}
+                                                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${isSelected ? 'bg-emerald-500/20 border-emerald-500' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
                                                     onClick={() => toggleOfferProp(pid)}
                                                 >
-                                                    <div className="trade-color-strip" style={{ backgroundColor: tile.color || '#fff' }}></div>
+                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-emerald-400 bg-emerald-400' : 'border-slate-500'}`}>
+                                                        {isSelected && <span className="text-black text-xs font-bold">✓</span>}
+                                                    </div>
+                                                    <div className="w-2 h-8 rounded-full" style={{ backgroundColor: tile.color || '#fff' }}></div>
                                                     <div className="flex-1">
-                                                        <div className="font-bold text-sm text-white">{tile.name}</div>
-                                                        <div className="text-[10px] text-slate-400">{tile.price.toLocaleString()}₺</div>
+                                                        <div className="font-bold text-white text-sm">{tile.name}</div>
+                                                        <div className="text-xs text-slate-400">{tile.price.toLocaleString()}₺</div>
                                                     </div>
                                                 </div>
                                             );
@@ -738,52 +789,72 @@ const App = () => {
                                 </div>
 
                                 {/* THEIR SIDE */}
-                                <div className="trade-column">
-                                    <h4 className="text-amber-400">{tradeTarget.name}</h4>
-                                    <div className="money-slider-Group">
-                                        <label className="text-xs font-bold text-slate-400 mb-1 flex justify-between">
-                                            <span>PARA İSTE</span>
-                                            <span className="text-white">{requestMoney.toLocaleString()}₺</span>
-                                        </label>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max={tradeTarget.money}
-                                            step="50000"
-                                            value={requestMoney}
-                                            onChange={(e) => setRequestMoney(Number(e.target.value))}
-                                            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                                        />
+                                <div className="flex flex-col bg-slate-900/50 rounded-3xl p-6 border border-white/10">
+                                    <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
+                                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: tradeTarget.color }}>{tradeTarget.name[0]}</div>
+                                        <div>
+                                            <h4 className="text-amber-400 font-bold text-lg">{tradeTarget.name.toUpperCase()}'DEN İSTE</h4>
+                                            <p className="text-xs text-slate-400">Karşı taraftan ne istiyorsun?</p>
+                                        </div>
                                     </div>
-                                    <h5 className="text-xs font-bold text-slate-400 mt-2">ONUN MÜLKLERİ</h5>
-                                    <div className="trade-property-list custom-scrollbar">
-                                        {tradeTarget.properties.length === 0 && <p className="text-center text-xs text-slate-500 py-4">Mülkü yok.</p>}
+
+                                    <div className="mb-6 bg-black/20 p-4 rounded-xl">
+                                        <label className="text-xs font-bold text-slate-400 mb-2 block uppercase tracking-wider">Nakit Para İste</label>
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max={tradeTarget.money}
+                                                step="50000"
+                                                value={requestMoney}
+                                                onChange={(e) => setRequestMoney(Math.min(tradeTarget.money, Math.max(0, Number(e.target.value))))}
+                                                className="flex-1 bg-slate-800 border border-slate-600 rounded-lg py-2 px-4 text-white font-mono text-lg focus:outline-none focus:border-amber-500 text-right"
+                                            />
+                                            <span className="font-bold text-amber-500 text-xl">₺</span>
+                                        </div>
+                                        <div className="flex justify-between mt-2 text-xs text-slate-500">
+                                            <span>Mevcut: {(tradeTarget.money / 1000000).toFixed(2)}M</span>
+                                            <button onClick={() => setRequestMoney(tradeTarget.money)} className="text-amber-400 hover:text-amber-300">Tümü</button>
+                                        </div>
+                                    </div>
+
+                                    <h5 className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">Mülk İste</h5>
+                                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2 relative">
+                                        {tradeTarget.properties.length === 0 && <div className="absolute inset-0 flex items-center justify-center text-slate-500 text-sm italic">Karşı tarafın mülkü yok.</div>}
                                         {tradeTarget.properties.map(pid => {
                                             const tile = BOARD_TILES.find(t => t.id === pid);
+                                            const isSelected = requestProps.includes(pid);
                                             return (
                                                 <div
                                                     key={pid}
-                                                    className={`trade-prop-item ${requestProps.includes(pid) ? 'selected' : ''}`}
+                                                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${isSelected ? 'bg-amber-500/20 border-amber-500' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
                                                     onClick={() => toggleRequestProp(pid)}
                                                 >
-                                                    <div className="trade-color-strip" style={{ backgroundColor: tile.color || '#fff' }}></div>
+                                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-amber-400 bg-amber-400' : 'border-slate-500'}`}>
+                                                        {isSelected && <span className="text-black text-xs font-bold">✓</span>}
+                                                    </div>
+                                                    <div className="w-2 h-8 rounded-full" style={{ backgroundColor: tile.color || '#fff' }}></div>
                                                     <div className="flex-1">
-                                                        <div className="font-bold text-sm text-white">{tile.name}</div>
-                                                        <div className="text-[10px] text-slate-400">{tile.price.toLocaleString()}₺</div>
+                                                        <div className="font-bold text-white text-sm">{tile.name}</div>
+                                                        <div className="text-xs text-slate-400">{tile.price.toLocaleString()}₺</div>
                                                     </div>
                                                 </div>
                                             );
                                         })}
                                     </div>
                                 </div>
-
-                                <div className="trade-actions">
-                                    <button onClick={() => setTradeStep(1)} className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-bold">GERİ DÖN</button>
-                                    <button onClick={submitTrade} className="bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-3 rounded-xl font-bold shadow-lg shadow-indigo-600/30 text-lg">TEKLİFİ GÖNDER 🚀</button>
-                                </div>
                             </div>
                         )}
-                    </div>
+
+                        {tradeStep === 2 && (
+                            <div className="p-4 flex gap-4 justify-center border-t border-white/10 mt-2">
+                                <button onClick={() => setTradeStep(1)} className="px-8 py-3 rounded-xl font-bold text-slate-300 hover:text-white hover:bg-white/10 transition-colors">GERİ DÖN</button>
+                                <button onClick={submitTrade} className="bg-indigo-600 hover:bg-indigo-500 text-white px-12 py-3 rounded-xl font-black text-lg shadow-lg shadow-indigo-600/30 transition-transform hover:scale-105 flex items-center gap-2">
+                                    <Send size={20} /> TEKLİFİ GÖNDER
+                                </button>
+                            </div>
+                        )}
+                    </motion.div>
                 </div>
             )}
 
@@ -803,34 +874,34 @@ const App = () => {
 
             <AnimatePresence>
                 {hoveredTile && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute z-[3000]" style={{ right: '20px', top: '150px' }}>
-                        <div className="glass px-6 py-4 rounded-xl border border-white/20 text-center text-white pointer-events-none min-w-[220px] backdrop-blur-md bg-black/80 custom-tooltip">
-                            <h3 className="font-black text-xl mb-2 text-indigo-300">{hoveredTile.name}</h3>
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute z-[3000]" style={{ right: '40px', top: '50%', transform: 'translateY(-50%)' }}>
+                        <div className="glass px-6 py-6 rounded-2xl border border-white/20 text-center text-white pointer-events-none min-w-[280px] backdrop-blur-xl bg-slate-900/90 custom-tooltip shadow-2xl">
+                            <h3 className="font-black text-2xl mb-4 text-indigo-300 border-b border-white/10 pb-2">{hoveredTile.name}</h3>
                             {hoveredTile.type === 'property' && (
-                                <div className="space-y-2 text-sm font-medium">
-                                    <div className="flex justify-between border-b border-white/10 pb-1">
-                                        <span className="text-slate-400">Arsa Değeri:</span>
-                                        <span className="text-emerald-400 font-mono">{hoveredTile.price?.toLocaleString()}₺</span>
+                                <div className="space-y-3 text-base font-medium">
+                                    <div className="flex justify-between items-center text-slate-300">
+                                        <span>Arsa Değeri</span>
+                                        <span className="text-emerald-400 font-mono text-lg">{hoveredTile.price?.toLocaleString()}₺</span>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-400">Kira Geliri:</span>
-                                        <span className="text-amber-400 font-mono">{hoveredTile.rent?.toLocaleString()}₺</span>
+                                    <div className="flex justify-between items-center text-slate-300 bg-white/5 p-2 rounded-lg">
+                                        <span>KİRA GELİRİ</span>
+                                        <span className="text-amber-400 font-mono text-xl font-bold">{hoveredTile.rent?.toLocaleString()}₺</span>
                                     </div>
                                     {hoveredTile.housePrice && (
-                                        <div className="flex justify-between border-t border-white/10 pt-1 mt-1">
-                                            <span className="text-slate-400">Ev Maliyeti:</span>
+                                        <div className="flex justify-between items-center text-slate-400 text-sm mt-2 pt-2 border-t border-white/10">
+                                            <span>Ev Maliyeti</span>
                                             <span className="text-blue-400 font-mono">{hoveredTile.housePrice?.toLocaleString()}₺</span>
                                         </div>
                                     )}
                                 </div>
                             )}
                             {(tile => {
-                                if (tile.type === 'start') return <p className="text-green-400 text-xs">Buradan her geçişte 2M₺ alırsın.</p>;
-                                if (tile.type === 'jail') return <p className="text-orange-400 text-xs">Sadece ziyaretçisin.</p>;
-                                if (tile.type === 'parking') return <p className="text-blue-400 text-xs">Güvenli bölge.</p>;
-                                if (tile.type === 'gotojail') return <p className="text-red-400 text-xs">Doğrudan hapse!</p>;
-                                if (tile.type === 'station') return <p className="text-purple-400 text-xs">TCDD İstasyonu.</p>;
-                                if (tile.type === 'tax') return <p className="text-red-500 text-xs font-bold">Ödenecek: {tile.price?.toLocaleString()}₺</p>;
+                                if (tile.type === 'start') return <p className="text-green-400 font-bold">Buradan her geçişte 2M₺ alırsın.</p>;
+                                if (tile.type === 'jail') return <p className="text-orange-400 font-bold">Sadece ziyaretçisin.</p>;
+                                if (tile.type === 'parking') return <p className="text-blue-400 font-bold">Güvenli bölge.</p>;
+                                if (tile.type === 'gotojail') return <p className="text-red-400 font-black">Doğrudan hapse!</p>;
+                                if (tile.type === 'station') return <p className="text-purple-400 font-bold">TCDD İstasyonu.</p>;
+                                if (tile.type === 'tax') return <p className="text-red-500 font-black text-lg">Ödenecek: {tile.price?.toLocaleString()}₺</p>;
                                 return null;
                             })(hoveredTile)}
                         </div>
@@ -876,7 +947,7 @@ const App = () => {
                             >
                                 {tile.color && <div className="tile-header" style={{ backgroundColor: tile.color }} />}
                                 <div className="tile-content">
-                                    <span className="tile-name">{tile.name}</span>
+                                    {![0, 14, 28, 42].includes(i) && <span className="tile-name">{tile.name}</span>}
                                     {tile.price && <span className="tile-price">{(tile.price / 1000000).toFixed(1)}M</span>}
                                     {tile.type === 'tax' && <span className="tile-price text-red-500 font-bold">{tile.price ? (tile.price / 1000000).toFixed(1) + 'M' : '0'}</span>}
                                     {owner && <div className="absolute top-1 right-1 w-3 h-3 rounded-full shadow-lg border border-white" style={{ backgroundColor: owner.color }} />}

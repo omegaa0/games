@@ -110,12 +110,14 @@ body {
 }
 
 .tile-name {
-  font-size: 0.65rem;
+  font-size: 0.5rem;
   font-weight: 800;
   color: #0f172a;
-  text-transform: uppercase;
-  line-height: 1;
+  line-height: 1.1;
+  word-break: break-word;
 }
+
+
 
 .tile-price {
   font-size: 0.6rem;
@@ -200,15 +202,15 @@ body {
 /* Character */
 /* Character Fix Phase */
 .character-3d {
-  width: 25px;
-  height: 45px;
+  width: 20px;
+  height: 40px;
   position: absolute;
   transform-style: preserve-3d;
-  z-index: 1000;
-  /* Force High Z-Index */
+  z-index: 5000;
+  /* Adjusted for better visibility on board */
+  transform: rotateX(-90deg) translateZ(20px);
+  transform-origin: bottom center;
   pointer-events: none;
-  /* Key fix: TranslateZ brings it 'above' the board surface */
-  transform: rotateX(-90deg) translateZ(35px) translateY(-15px);
 }
 
 .char-body {
