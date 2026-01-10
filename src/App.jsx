@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dice5, User, DollarSign, ShoppingCart, LogOut, Users, History, PlayCircle, Star, Zap, Droplet, Wallet, Map, Eye, Send, Repeat } from 'lucide-react';
+import { Dice5, User, DollarSign, LogOut, PlayCircle, Wallet, Map, Eye, Send, Repeat, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { BOARD_TILES, CHANCE_CARDS, COMMUNITY_CHEST } from './data/boardData';
-import ThreePlayer from './components/ThreePlayer';
 import './index.css';
 
 const socket = io();
@@ -20,7 +19,7 @@ const Dice3D = ({ value, rolling }) => {
         6: 'rotateX(180deg) rotateY(0deg)'
     };
     return (
-        <div className="scene ml-[-50px]">
+        <div className="scene scale-75">
             <div className={`cube ${rolling ? 'rolling' : ''}`} style={{ transform: rotations[value] || rotations[1] }}>
                 <div className="cube__face cube__face--front">1</div>
                 <div className="cube__face cube__face--back">6</div>
@@ -32,6 +31,14 @@ const Dice3D = ({ value, rolling }) => {
         </div>
     );
 };
+
+const Character3D = ({ color, name, isCurrent }) => (
+    <div className="character-3d" style={{ '--char-color': color }}>
+        <div className="char-head" style={{ backgroundColor: color }}></div>
+        <div className="char-body" style={{ backgroundColor: color }}></div>
+        {isCurrent && <div className="absolute -top-14 left-1/2 -translate-x-1/2 text-white font-bold text-xs bg-indigo-600 px-3 py-1 rounded-full whitespace-nowrap animate-bounce z-50 border border-white/30 shadow-lg">BEN</div>}
+    </div>
+);
 
 const Building3D = ({ level }) => {
     const isHotel = level === 5;
@@ -115,7 +122,7 @@ const App = () => {
     // --- STATE ---
     const [gameState, setGameState] = useState('lobby');
     const [room, setRoom] = useState(null);
-    const [roomList, setRoomList] = useState([]); // Lobby Room List
+    const [roomList, setRoomList] = useState([]);
     const [playerName, setPlayerName] = useState('');
     const [diceRolling, setDiceRolling] = useState(false);
     const [lastDice, setLastDice] = useState([1, 1]);
@@ -125,9 +132,17 @@ const App = () => {
     const [canBuy, setCanBuy] = useState(false);
     const [canBuild, setCanBuild] = useState(false);
     const [viewMode, setViewMode] = useState('3d');
+
+    // Trade State
     const [tradeProposal, setTradeProposal] = useState(null);
     const [showTradeModal, setShowTradeModal] = useState(false);
+    const [tradeStep, setTradeStep] = useState(1);
     const [tradeTarget, setTradeTarget] = useState(null);
+    const [offerMoney, setOfferMoney] = useState(0);
+    const [requestMoney, setRequestMoney] = useState(0);
+    const [offerProps, setOfferProps] = useState([]);
+    const [requestProps, setRequestProps] = useState([]);
+
     const [winner, setWinner] = useState(null);
     const [chanceCard, setChanceCard] = useState(null);
     const [hoveredTile, setHoveredTile] = useState(null);
@@ -334,6 +349,7 @@ const App = () => {
                 if (card.type === 'money') player.money += card.amount;
                 if (card.type === 'move') player.position = card.target;
                 if (card.type === 'step') player.position = (player.position + card.amount + 56) % 56;
+                // 'payall' logic omitted for brevity in this step, requires complex flow
 
                 // Turn End Logic for Chance
                 if (socket.id === action.playerId) {
@@ -426,21 +442,35 @@ const App = () => {
 
     const toggleView = () => setViewMode(prev => prev === '3d' ? 'top' : '3d');
 
-    const handleTradeClick = (targetPlayer) => {
-        if (targetPlayer.id === socket.id) return;
-        setTradeTarget(targetPlayer);
+    // --- TRADE LOGIC ---
+
+    const openTradeModal = () => {
+        setTradeStep(1);
+        setTradeTarget(null);
+        setOfferMoney(0);
+        setRequestMoney(0);
+        setOfferProps([]);
+        setRequestProps([]);
         setShowTradeModal(true);
     };
 
-    const submitTrade = (e) => {
-        e.preventDefault();
+    const toggleOfferProp = (id) => {
+        setOfferProps(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const toggleRequestProp = (id) => {
+        setRequestProps(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const submitTrade = () => {
+        if (!tradeTarget) return;
         socket.emit('proposeTrade', {
             roomId: room.id,
             tradeData: {
                 fromPlayerId: socket.id,
                 toPlayerId: tradeTarget.id,
-                offer: { money: 1000000, properties: [] },
-                request: { money: 0, properties: [] }
+                offer: { money: offerMoney, properties: offerProps },
+                request: { money: requestMoney, properties: requestProps }
             }
         });
         setShowTradeModal(false);
@@ -450,75 +480,127 @@ const App = () => {
     // --- RENDER ---
     if (gameState === 'lobby' || gameState === 'waiting') {
         return (
-            <div className="scene-container overflow-auto lobby-bg">
-                <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?q=80&w=2800&auto=format&fit=crop)' }}></div>
-                <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="glass p-16 w-full max-w-4xl text-center rounded-[60px] border border-white/10 shadow-2xl relative z-10 backdrop-blur-xl">
-                    <h1 className="text-8xl font-black mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 drop-shadow-lg">
-                        EMLAK KRALI <span className="text-white text-5xl block mt-2">TÜRKİYE</span>
-                    </h1>
+            <div className="scene-container overflow-auto lobby-bg flex items-center justify-center">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="lobby-card p-12 w-full max-w-5xl text-center"
+                >
+                    <div className="logo-container">
+                        <div className="logo-emblem text-9xl mb-4">👑</div>
+                        <h1 className="lobby-title">EMLAK KRALI</h1>
+                        <p className="text-2xl text-indigo-300 font-light tracking-[0.5em] mt-2">TÜRKİYE EDİSYONU</p>
+                    </div>
 
                     {gameState === 'lobby' && (
-                        <div className="flex flex-col items-center gap-6 w-full">
-                            <input type="text" placeholder="İsmin nedir?" value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="w-1/2 bg-black/50 border border-indigo-500/30 rounded-2xl px-6 py-4 text-white text-2xl font-bold text-center focus:outline-none focus:ring-4 focus:ring-indigo-500/50 mb-4" />
+                        <div className="flex flex-col items-center gap-8 w-full">
+                            <div className="modern-input-group">
+                                <User className="input-icon" size={24} />
+                                <input
+                                    type="text"
+                                    placeholder="Oyuncu İsminiz..."
+                                    value={playerName}
+                                    onChange={(e) => setPlayerName(e.target.value)}
+                                    className="modern-input"
+                                />
+                            </div>
 
                             {!showCreateModal ? (
-                                <>
-                                    <div className="flex justify-between w-full items-center mb-4">
-                                        <h2 className="text-2xl font-bold text-white">Açık Odalar</h2>
-                                        <button onClick={() => setShowCreateModal(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold transition-all">
-                                            + ODA OLUŞTUR
+                                <div className="w-full bg-black/20 p-8 rounded-3xl border border-white/5">
+                                    <div className="flex justify-between w-full items-center mb-6">
+                                        <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+                                            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
+                                            Açık Odalar
+                                        </h2>
+                                        <button onClick={() => setShowCreateModal(true)} className="action-btn create-room-btn flex items-center gap-2">
+                                            <span>+</span> YENİ MASAYA OTUR
                                         </button>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-h-[400px] overflow-y-auto">
-                                        {roomList.length === 0 && <p className="text-slate-400 col-span-2 text-xl">Henüz açık oda yok. İlk odayı sen kur!</p>}
+
+                                    <div className="room-grid max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {roomList.length === 0 && (
+                                            <div className="col-span-full py-12 text-slate-500 border-2 border-dashed border-slate-700 rounded-2xl">
+                                                <p className="text-xl">Henüz oyun kurulu değil.</p>
+                                                <p className="text-sm mt-2">İlk masayı sen kur!</p>
+                                            </div>
+                                        )}
                                         {roomList.map(r => (
-                                            <div key={r.id} onClick={() => joinRoom(r.id)} className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl cursor-pointer transition-all flex justify-between items-center group">
-                                                <div className="text-left">
-                                                    <h3 className="text-xl font-bold text-indigo-300 group-hover:text-white transition-colors">{r.name}</h3>
-                                                    <p className="text-xs text-slate-400">Kurucu: {r.hostName}</p>
+                                            <div key={r.id} onClick={() => joinRoom(r.id)} className="room-card group">
+                                                <h3 className="text-2xl font-bold text-white mb-1 group-hover:text-indigo-300 transition-colors">{r.name}</h3>
+                                                <div className="flex justify-between w-full mt-4 items-end">
+                                                    <div className="flex items-center gap-2 text-slate-400 text-sm">
+                                                        <User size={14} />
+                                                        {r.hostName}
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-lg text-sm font-bold ${r.playerCount >= r.maxPlayers ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                                        {r.playerCount}/{r.maxPlayers} Oyuncu
+                                                    </span>
                                                 </div>
-                                                <span className="bg-black/40 px-3 py-1 rounded text-sm font-mono">{r.playerCount}/{r.maxPlayers}</span>
                                             </div>
                                         ))}
                                     </div>
-                                </>
-                            ) : (
-                                <div className="bg-black/40 p-8 rounded-3xl w-full max-w-md border border-white/10">
-                                    <h2 className="text-3xl font-bold mb-6">Oda Oluştur</h2>
-                                    <input type="text" placeholder="Oda Adı" value={newRoomName} onChange={(e) => setNewRoomName(e.target.value)} className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white mb-6" />
-                                    <div className="flex gap-4">
-                                        <button onClick={() => setShowCreateModal(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-bold">İptal</button>
-                                        <button onClick={createRoom} className="flex-1 bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold">OLUŞTUR</button>
-                                    </div>
                                 </div>
+                            ) : (
+                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-br from-slate-900 to-indigo-950 p-10 rounded-3xl w-full max-w-lg border border-indigo-500/30 shadow-2xl">
+                                    <h2 className="text-3xl font-bold mb-8 text-white">Yeni Masa Kur</h2>
+                                    <div className="modern-input-group w-full mb-8">
+                                        <Map className="input-icon" size={24} />
+                                        <input
+                                            type="text"
+                                            placeholder="Masa Adı (Örn: İstanbul Keyfi)"
+                                            value={newRoomName}
+                                            onChange={(e) => setNewRoomName(e.target.value)}
+                                            className="modern-input"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <button onClick={() => setShowCreateModal(false)} className="action-btn bg-slate-700 hover:bg-slate-600 flex-1 !bg-none bg-slate-700">İptal</button>
+                                        <button onClick={createRoom} className="action-btn flex-1">MASAYI KUR</button>
+                                    </div>
+                                </motion.div>
                             )}
                         </div>
                     )}
 
                     {gameState === 'waiting' && <div className="w-full mt-8">
-                        <h2 className="text-4xl font-bold text-white mb-2">{room?.name}</h2>
-                        <p className="text-slate-400 mb-8">Oyuncular bekleniyor... ({room?.players.length}/{room?.maxPlayers})</p>
+                        <div className="flex items-center justify-center gap-4 mb-2">
+                            <h2 className="text-5xl font-black text-white">{room?.name}</h2>
+                            <span className="bg-indigo-600 px-3 py-1 rounded text-sm font-bold text-white/80 tracking-widest">BEKLEME SALONU</span>
+                        </div>
+                        <p className="text-indigo-300 mb-12 text-xl">Oyuncular toplanıyor... ({room?.players.length}/{room?.maxPlayers})</p>
 
-                        <div className="grid grid-cols-2 gap-4 w-full mb-8">
+                        <div className="flex flex-wrap justify-center gap-8 mb-12">
                             {room?.players.map((p, i) => (
-                                <motion.div key={p.id} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 relative overflow-hidden">
-                                    {i === 0 && <div className="absolute top-0 right-0 bg-yellow-500 text-black text-[10px] px-2 font-bold">HOST</div>}
-                                    <div className="w-12 h-12 rounded-xl shadow-lg flex items-center justify-center text-white text-xl font-black" style={{ backgroundColor: p.color }}>{p.name[0]}</div>
-                                    <span className="text-xl font-bold truncate">{p.name}</span>
+                                <motion.div key={p.id} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center gap-3 relative group">
+                                    {i === 0 && <div className="absolute -top-6 bg-amber-500 text-black text-xs px-3 py-1 rounded-full font-black shadow-lg shadow-amber-500/50 z-20">KURUCU</div>}
+                                    <div className="wait-avatar relative" style={{ backgroundColor: p.color }}>
+                                        {p.name[0]}
+                                        <div className="absolute inset-0 border-2 border-white/20 rounded-[18px]"></div>
+                                    </div>
+                                    <span className="text-xl font-bold text-white group-hover:text-indigo-300 transition-colors">{p.name}</span>
                                 </motion.div>
                             ))}
                         </div>
 
                         {room?.hostId === socket.id ? (
-                            <button onClick={startGame} className="btn-luxury w-full py-6 text-2xl bg-indigo-600 border-indigo-800 hover:bg-indigo-500">OYUNU BAŞLAT 🚀</button>
+                            <button onClick={startGame} className="action-btn text-2xl px-12 py-4 animate-pulse shadow-[0_0_50px_rgba(79,70,229,0.5)]">
+                                OYUNU BAŞLAT 🚀
+                            </button>
                         ) : (
-                            <p className="text-center text-slate-400 font-bold text-xl animate-pulse">Kurucunun oyunu başlatması bekleniyor...</p>
+                            <div className="flex flex-col items-center gap-2 p-6 bg-white/5 rounded-2xl border border-white/5 animate-pulse">
+                                <div className="text-2xl font-bold text-white">Kurucu Bekleniyor...</div>
+                                <p className="text-slate-400">Oyun kurucu oyunu başlattığında otomatik olarak masaya alınacaksınız.</p>
+                            </div>
                         )}
                     </div>}
                 </motion.div>
             </div>
         );
     }
+
+    const currentPlayer = room?.players.find(p => p.id === socket.id);
+    const availablePlayers = room?.players.filter(p => p.id !== socket.id && !p.bankrupt);
 
     return (
         <div className="scene-container">
@@ -531,10 +613,8 @@ const App = () => {
                 </div>
             )}
 
-            {room?.players.find(p => p.id === socket.id)?.bankrupt && (
-                <div className="bankruptcy-overlay">
-                    İFLAS ETTİNİZ
-                </div>
+            {currentPlayer?.bankrupt && (
+                <div className="bankruptcy-overlay">İFLAS ETTİNİZ</div>
             )}
 
             <button key="viewToggle" onClick={toggleView} className="view-toggle-btn">
@@ -545,26 +625,164 @@ const App = () => {
 
             <ChatSystem room={room} socket={socket} playerId={socket.id} />
 
+            {/* --- TRADE PROPOSAL RECEIVED MODAL --- */}
             {tradeProposal && (
                 <div className="modal-overlay">
-                    <div className="glass p-8 rounded-3xl max-w-md w-full text-center border border-indigo-500">
-                        <h3 className="text-2xl text-white font-bold mb-4">Takas Teklifi!</h3>
-                        <p className="text-slate-300 mb-6">Bir oyuncu sana takas teklif etti.</p>
+                    <div className="glass p-8 rounded-3xl max-w-2xl w-full text-center border border-indigo-500">
+                        <h3 className="text-3xl text-white font-bold mb-6">🤝 Takas Teklifi</h3>
+                        <p className="text-slate-300 mb-6 text-xl">
+                            <span className="font-bold text-white">{room.players.find(p => p.id === tradeProposal.fromPlayerId)?.name}</span> sana bir teklif yaptı:
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-8 mb-8">
+                            <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/30">
+                                <h4 className="text-emerald-400 font-bold mb-2">ALACAKLARIN</h4>
+                                <ul className="text-left text-sm space-y-1">
+                                    {tradeProposal.offer.money > 0 && <li className="font-mono text-white">💰 {tradeProposal.offer.money.toLocaleString()}₺</li>}
+                                    {tradeProposal.offer.properties.map(pid => (
+                                        <li key={pid} className="text-slate-200">🏠 {BOARD_TILES.find(t => t.id === pid).name}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/30">
+                                <h4 className="text-red-400 font-bold mb-2">VERECEKLERİN</h4>
+                                <ul className="text-left text-sm space-y-1">
+                                    {tradeProposal.request.money > 0 && <li className="font-mono text-white">💰 {tradeProposal.request.money.toLocaleString()}₺</li>}
+                                    {tradeProposal.request.properties.map(pid => (
+                                        <li key={pid} className="text-slate-200">🏠 {BOARD_TILES.find(t => t.id === pid).name}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+
                         <div className="flex gap-4 justify-center">
-                            <button onClick={() => { socket.emit('respondTrade', { roomId: room.id, accepted: true, tradeData: tradeProposal }); setTradeProposal(null); }} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold">Kabul Et</button>
-                            <button onClick={() => { socket.emit('respondTrade', { roomId: room.id, accepted: false, tradeData: tradeProposal }); setTradeProposal(null); }} className="bg-red-600 text-white px-6 py-3 rounded-xl font-bold">Reddet</button>
+                            <button onClick={() => { socket.emit('respondTrade', { roomId: room.id, accepted: true, tradeData: tradeProposal }); setTradeProposal(null); }} className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-xl font-bold text-xl shadow-lg transition-transform hover:scale-105">
+                                KABUL ET ✅
+                            </button>
+                            <button onClick={() => { socket.emit('respondTrade', { roomId: room.id, accepted: false, tradeData: tradeProposal }); setTradeProposal(null); }} className="bg-red-600 hover:bg-red-500 text-white px-8 py-4 rounded-xl font-bold text-xl shadow-lg transition-transform hover:scale-105">
+                                REDDET ❌
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
+            {/* --- CREATE TRADE MODAL --- */}
             {showTradeModal && (
                 <div className="modal-overlay">
-                    <div className="glass p-6 rounded-3xl text-center">
-                        <h3 className="text-white text-xl mb-4">{tradeTarget?.name} ile Takas</h3>
-                        <p className="text-slate-400 text-sm mb-4">(Hızlı Takas: Şuan sadece para/hediye)</p>
-                        <button onClick={submitTrade} className="bg-indigo-600 px-6 py-2 rounded-xl text-white font-bold mr-2">1M Gönder (Test)</button>
-                        <button onClick={() => setShowTradeModal(false)} className="bg-slate-700 px-6 py-2 rounded-xl text-white">İptal</button>
+                    <div className="glass p-6 rounded-3xl w-full max-w-4xl h-[80vh] flex flex-col relative shadow-2xl border border-indigo-500/50">
+                        <button onClick={() => setShowTradeModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={24} /></button>
+                        <h2 className="text-3xl font-black text-center mb-6 text-white tracking-tight">TAKAS MERKEZİ</h2>
+
+                        {tradeStep === 1 && (
+                            <div className="flex-1 flex flex-col items-center justify-center gap-6">
+                                <h3 className="text-xl text-slate-300">Kiminle takas yapmak istersin?</h3>
+                                <div className="flex gap-4 flex-wrap justify-center">
+                                    {availablePlayers?.map(p => (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => { setTradeTarget(p); setTradeStep(2); }}
+                                            className="flex flex-col items-center gap-2 p-6 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition-all hover:scale-105"
+                                        >
+                                            <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-bold text-white shadow-lg" style={{ backgroundColor: p.color }}>
+                                                {p.name[0]}
+                                            </div>
+                                            <span className="font-bold text-white text-lg">{p.name}</span>
+                                        </button>
+                                    ))}
+                                    {availablePlayers?.length === 0 && <p className="text-slate-500">Takas yapacak başka oyuncu yok.</p>}
+                                </div>
+                            </div>
+                        )}
+
+                        {tradeStep === 2 && tradeTarget && (
+                            <div className="trade-modal-container">
+                                {/* YOUR SIDE */}
+                                <div className="trade-column">
+                                    <h4 className="text-emerald-400">SENİN TEKLİFİN</h4>
+                                    <div className="money-slider-Group">
+                                        <label className="text-xs font-bold text-slate-400 mb-1 flex justify-between">
+                                            <span>PARA EKLE</span>
+                                            <span className="text-white">{offerMoney.toLocaleString()}₺</span>
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max={currentPlayer.money}
+                                            step="50000"
+                                            value={offerMoney}
+                                            onChange={(e) => setOfferMoney(Number(e.target.value))}
+                                            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                    </div>
+                                    <h5 className="text-xs font-bold text-slate-400 mt-2">MÜLKLERİN</h5>
+                                    <div className="trade-property-list custom-scrollbar">
+                                        {currentPlayer.properties.length === 0 && <p className="text-center text-xs text-slate-500 py-4">Mülkün yok.</p>}
+                                        {currentPlayer.properties.map(pid => {
+                                            const tile = BOARD_TILES.find(t => t.id === pid);
+                                            return (
+                                                <div
+                                                    key={pid}
+                                                    className={`trade-prop-item ${offerProps.includes(pid) ? 'selected' : ''}`}
+                                                    onClick={() => toggleOfferProp(pid)}
+                                                >
+                                                    <div className="trade-color-strip" style={{ backgroundColor: tile.color || '#fff' }}></div>
+                                                    <div className="flex-1">
+                                                        <div className="font-bold text-sm text-white">{tile.name}</div>
+                                                        <div className="text-[10px] text-slate-400">{tile.price.toLocaleString()}₺</div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* THEIR SIDE */}
+                                <div className="trade-column">
+                                    <h4 className="text-amber-400">{tradeTarget.name}</h4>
+                                    <div className="money-slider-Group">
+                                        <label className="text-xs font-bold text-slate-400 mb-1 flex justify-between">
+                                            <span>PARA İSTE</span>
+                                            <span className="text-white">{requestMoney.toLocaleString()}₺</span>
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max={tradeTarget.money}
+                                            step="50000"
+                                            value={requestMoney}
+                                            onChange={(e) => setRequestMoney(Number(e.target.value))}
+                                            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                    </div>
+                                    <h5 className="text-xs font-bold text-slate-400 mt-2">ONUN MÜLKLERİ</h5>
+                                    <div className="trade-property-list custom-scrollbar">
+                                        {tradeTarget.properties.length === 0 && <p className="text-center text-xs text-slate-500 py-4">Mülkü yok.</p>}
+                                        {tradeTarget.properties.map(pid => {
+                                            const tile = BOARD_TILES.find(t => t.id === pid);
+                                            return (
+                                                <div
+                                                    key={pid}
+                                                    className={`trade-prop-item ${requestProps.includes(pid) ? 'selected' : ''}`}
+                                                    onClick={() => toggleRequestProp(pid)}
+                                                >
+                                                    <div className="trade-color-strip" style={{ backgroundColor: tile.color || '#fff' }}></div>
+                                                    <div className="flex-1">
+                                                        <div className="font-bold text-sm text-white">{tile.name}</div>
+                                                        <div className="text-[10px] text-slate-400">{tile.price.toLocaleString()}₺</div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="trade-actions">
+                                    <button onClick={() => setTradeStep(1)} className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-bold">GERİ DÖN</button>
+                                    <button onClick={submitTrade} className="bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-3 rounded-xl font-bold shadow-lg shadow-indigo-600/30 text-lg">TEKLİFİ GÖNDER 🚀</button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -585,7 +803,7 @@ const App = () => {
 
             <AnimatePresence>
                 {hoveredTile && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute key-tooltip z-[3000]">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute z-[3000]" style={{ right: '20px', top: '150px' }}>
                         <div className="glass px-6 py-4 rounded-xl border border-white/20 text-center text-white pointer-events-none min-w-[220px] backdrop-blur-md bg-black/80 custom-tooltip">
                             <h3 className="font-black text-xl mb-2 text-indigo-300">{hoveredTile.name}</h3>
                             {hoveredTile.type === 'property' && (
@@ -612,6 +830,7 @@ const App = () => {
                                 if (tile.type === 'parking') return <p className="text-blue-400 text-xs">Güvenli bölge.</p>;
                                 if (tile.type === 'gotojail') return <p className="text-red-400 text-xs">Doğrudan hapse!</p>;
                                 if (tile.type === 'station') return <p className="text-purple-400 text-xs">TCDD İstasyonu.</p>;
+                                if (tile.type === 'tax') return <p className="text-red-500 text-xs font-bold">Ödenecek: {tile.price?.toLocaleString()}₺</p>;
                                 return null;
                             })(hoveredTile)}
                         </div>
@@ -631,11 +850,6 @@ const App = () => {
                                 <Wallet size={14} className="text-emerald-400" /> {(p.money / 1000000).toFixed(1)}M
                             </div>
                         </div>
-                        {!p.bankrupt && p.id !== socket.id && (
-                            <button onClick={() => handleTradeClick(p)} className="p-2 ml-auto bg-indigo-600 rounded-lg hover:bg-indigo-500 transition-colors" title="Takas Yap">
-                                <Repeat size={16} color="white" />
-                            </button>
-                        )}
                     </div>
                 ))}
             </div>
@@ -664,6 +878,7 @@ const App = () => {
                                 <div className="tile-content">
                                     <span className="tile-name">{tile.name}</span>
                                     {tile.price && <span className="tile-price">{(tile.price / 1000000).toFixed(1)}M</span>}
+                                    {tile.type === 'tax' && <span className="tile-price text-red-500 font-bold">{tile.price ? (tile.price / 1000000).toFixed(1) + 'M' : '0'}</span>}
                                     {owner && <div className="absolute top-1 right-1 w-3 h-3 rounded-full shadow-lg border border-white" style={{ backgroundColor: owner.color }} />}
                                 </div>
                                 {buildLevel > 0 && <Building3D level={buildLevel} />}
@@ -675,16 +890,7 @@ const App = () => {
                                     <AnimatePresence>
                                         {room?.players.filter(p => p.position === i).map(p => (
                                             <div key={p.id} className="relative w-full h-full flex items-center justify-center player-token-container">
-                                                {/* Use Three.js Model */}
-                                                <div style={{ transform: 'translateY(-30px) scale(1.5)', zIndex: 50 }}>
-                                                    <ThreePlayer color={p.color} isCurrent={room.players[room.currentTurn].id === p.id} />
-                                                </div>
-                                                {/* Fallback Name Tag */}
-                                                {room.players[room.currentTurn].id === p.id && (
-                                                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 text-white font-bold text-[10px] bg-indigo-600 px-2 py-0.5 rounded shadow-lg animate-bounce z-[100] whitespace-nowrap border border-white/20">
-                                                        BEN
-                                                    </div>
-                                                )}
+                                                <Character3D color={p.color} name={p.name} isCurrent={room.players[room.currentTurn].id === p.id} />
                                             </div>
                                         ))}
                                     </AnimatePresence>
@@ -692,8 +898,8 @@ const App = () => {
                             </div>
                         );
                     })}
-                    <div className="board-center expanded-center cursor-pointer group hover:bg-white/5 transition-colors" onClick={toggleView}>
-                        <div className="flex gap-16 items-center scale-150 pointer-events-none">
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group hover:scale-105 transition-transform" onClick={toggleView}>
+                        <div className="flex gap-4 items-center scale-150">
                             <Dice3D value={lastDice[0]} rolling={diceRolling} />
                             <Dice3D value={lastDice[1]} rolling={diceRolling} />
                         </div>
@@ -703,9 +909,14 @@ const App = () => {
 
             <div className="controls-bottom">
                 {!winner && room?.players[room?.currentTurn].id === socket.id && turnPhase === 'roll' && (
-                    <button onClick={rollDice} disabled={diceRolling} className="btn-luxury px-8 py-4 text-xl">
-                        {rolledDoubles ? "ÇİFT! TEKRAR AT" : "ZARI AT"}
-                    </button>
+                    <div className="flex gap-4 items-center">
+                        <button onClick={openTradeModal} className="btn-luxury bg-indigo-600 px-6 py-4 text-xl border-b-4 border-indigo-900 hover:border-indigo-800 flex items-center gap-2">
+                            <Repeat size={24} /> TAKAS YAP
+                        </button>
+                        <button onClick={rollDice} disabled={diceRolling} className="btn-luxury px-8 py-4 text-xl flex-1 justify-center">
+                            {rolledDoubles ? "ÇİFT! TEKRAR AT" : "ZARI AT"}
+                        </button>
+                    </div>
                 )}
 
                 {!winner && room?.players[room?.currentTurn].id === socket.id && turnPhase === 'decision' && (
@@ -732,6 +943,13 @@ const App = () => {
                             {rolledDoubles ? "TURU BİTİR (TEKRAR AT)" : "PAS GEÇ"}
                         </button>
                     </>
+                )}
+
+                {/* ALWAYS SHOWS TARGETED TRADE BUTTON WHEN NOT YOUR TURN (Spectator Trade) */}
+                {!winner && room?.players[room?.currentTurn].id !== socket.id && (
+                    <button onClick={openTradeModal} className="btn-luxury bg-indigo-600/50 hover:bg-indigo-600/80 px-4 py-2 text-sm border-b-0 absolute bottom-32 right-8 rounded-xl backdrop-blur-md">
+                        🤝 TAKAS TEKLİF ET
+                    </button>
                 )}
             </div>
         </div>

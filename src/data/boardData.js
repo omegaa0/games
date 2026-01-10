@@ -8,7 +8,7 @@ export const BOARD_TILES = [
     { id: 5, name: "GAZİANTEP", type: "property", price: 800000, rent: 40000, group: "brown", color: "#8b4513" },
     { id: 6, name: "GELİR VERGİSİ", type: "tax", price: 2000000 },
     { id: 7, name: "HAYDARPAŞA", type: "station", price: 2000000, rent: 250000 },
-    { id: 8, name: "KARS", type: "property", price: 1000000, rent: 50000, group: "lightblue", color: "#87ceeb" },
+    { id: 8, name: "ARDAHAN", type: "property", price: 1000000, rent: 50000, group: "lightblue", color: "#87ceeb" },
     { id: 9, name: "AĞRI", type: "property", price: 1000000, rent: 50000, group: "lightblue", color: "#87ceeb" },
     { id: 10, name: "ŞANS", type: "chance" },
     { id: 11, name: "ERZİNCAN", type: "property", price: 1200000, rent: 60000, group: "lightblue", color: "#87ceeb" },
@@ -61,7 +61,7 @@ export const BOARD_TILES = [
     { id: 52, name: "LÜKS VERGİSİ", type: "tax", price: 0 },
     { id: 53, name: "TEKİRDAĞ", type: "property", price: 4000000, rent: 200000, housePrice: 1200000, group: "darkblue", color: "#00008b" },
     { id: 54, name: "EDİRNE", type: "property", price: 4000000, rent: 200000, housePrice: 1200000, group: "darkblue", color: "#00008b" },
-    { id: 55, name: "ARDAHAN", type: "property", price: 6000000, rent: 500000, housePrice: 2000000, group: "darkblue", color: "#00008b" }
+    { id: 55, name: "KARS", type: "property", price: 6000000, rent: 500000, housePrice: 2000000, group: "darkblue", color: "#00008b" }
 ];
 
 export const CHANCE_CARDS = [
