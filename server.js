@@ -45,7 +45,7 @@ io.on('connection', (socket) => {
                 id: socket.id,
                 name: playerName,
                 position: 0,
-                money: 1500,
+                money: INITIAL_MONEY,
                 properties: [],
                 color: getPlayerColor(room.players.length)
             };

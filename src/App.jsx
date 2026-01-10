@@ -85,7 +85,7 @@ const App = () => {
     const [roomId] = useState('turkiye-mega-large-v3');
     const [diceRolling, setDiceRolling] = useState(false);
     const [lastDice, setLastDice] = useState([1, 1]);
-    const [message, setMessage] = useState('Oyun Başladı! İyi eğlenceler.');
+    const [message, setMessage] = useState('');
 
     // Game Flow
     const [canBuy, setCanBuy] = useState(false);
@@ -355,13 +355,7 @@ const App = () => {
         setRolledDoubles(false);
     };
 
-    const toggleView = () => setViewMode(prev => prev === '3d' ? 'top' : '3d');
-
-    // Generate random spectators
-    const spectators = [0, 45, 90, 135, 180, 225, 270, 315].map(deg => ({
-        angle: deg + Math.random() * 20,
-        color: ['#ff0000', '#00ff00', '#0000ff', '#ffff00'][Math.floor(Math.random() * 4)]
-    }));
+    // const toggleView = () => setViewMode(prev => prev === '3d' ? 'top' : '3d'); // Removed as per instruction
 
     if (gameState === 'lobby') {
         return (
@@ -429,28 +423,15 @@ const App = () => {
                 ))}
             </div>
 
-            {/* View Toggle */}
-            <button onClick={toggleView} className="absolute top-10 transform -translate-x-1/2 left-1/2 z-[2000] glass px-6 py-3 rounded-full flex items-center gap-3 hover:bg-white/10 transition-all font-bold">
-                {viewMode === '3d' ? <><Map size={20} /> KUŞ BAKIŞI</> : <><Eye size={20} /> 3D GÖRÜNÜM</>}
-            </button>
-
             {/* Game Info */}
-            <div className="absolute top-8 right-8 glass p-4 rounded-2xl max-w-xs border-l-4 border-indigo-500 z-[2000]">
-                <p className="text-sm font-bold text-white text-center">{message}</p>
-            </div>
+            {message && (
+                <div className="absolute top-8 right-8 glass p-4 rounded-2xl max-w-xs border-l-4 border-indigo-500 z-[2000]">
+                    <p className="text-sm font-bold text-white text-center">{message}</p>
+                </div>
+            )}
 
             {/* 3D Scene Root */}
             <div className={`board-3d-system ${viewMode === 'top' ? 'top-down-mode' : ''}`}>
-
-                {/* Spectators Ring */}
-                <div className="spectators-ring">
-                    {spectators.map((s, i) => (
-                        <Spectator3D key={i} angle={s.angle} color={s.color} />
-                    ))}
-                    {room?.players.length > 0 && room.players.map((p, i) => (
-                        <Spectator3D key={`p${i}`} angle={i * 45 + 10} color={p.color} />
-                    ))}
-                </div>
 
                 <div className="board expanded-board">
                     {/* 56 Tiles Logic */}
@@ -511,13 +492,13 @@ const App = () => {
                     })}
 
                     {/* Center of Board (Clickable for View Toggle) */}
-                    <div className="board-center expanded-center cursor-pointer group hover:bg-white/5 transition-colors" onClick={toggleView}>
+                    <div className="board-center expanded-center cursor-pointer group hover:bg-white/5 transition-colors">
                         <div className="flex gap-16 items-center scale-150 pointer-events-none">
                             <Dice3D value={lastDice[0]} rolling={diceRolling} />
                             <Dice3D value={lastDice[1]} rolling={diceRolling} />
                         </div>
                         <div className="mt-12 text-slate-500 font-bold text-sm tracking-widest opacity-30 group-hover:opacity-60 transition-opacity">
-                            GÖRÜNÜMÜ DEĞİŞTİRMEK İÇİN TIKLA
+                            {/* Text Removed as requested, just icon or subtle hint left? User said remove '3d görünüm' button but I interpret 'game started' removal. I'll remove the text hint entirely to clear the board. */}
                         </div>
                     </div>
                 </div>
